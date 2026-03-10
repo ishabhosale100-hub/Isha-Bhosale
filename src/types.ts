@@ -100,7 +100,7 @@ export interface TimelineEvent {
 export interface NetworkNode {
   id: string;
   name: string;
-  type: 'Suspect' | 'Associate' | 'Location' | 'Case' | 'Gang';
+  type: 'Suspect' | 'Associate' | 'Location' | 'Case' | 'Gang' | 'Evidence';
   group: number;
 }
 

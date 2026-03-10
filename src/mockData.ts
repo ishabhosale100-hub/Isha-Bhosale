@@ -75,6 +75,9 @@ export const GLOBAL_NETWORK: { nodes: NetworkNode[], links: NetworkLink[] } = {
     { id: 'Case2', name: 'Cyber Fraud', type: 'Case', group: 4 },
     { id: 'GangA', name: 'Shadow Syndicate', type: 'Gang', group: 5 },
     { id: 'GangB', name: 'Byte Bandits', type: 'Gang', group: 5 },
+    { id: 'EVD1', name: 'Fingerprint EVD-001', type: 'Evidence', group: 6 },
+    { id: 'EVD2', name: 'Badge EVD-002', type: 'Evidence', group: 6 },
+    { id: 'EVD3', name: 'Comm Log EVD-003', type: 'Evidence', group: 6 },
   ],
   links: [
     { source: 'Vikram', target: 'Rahul', label: 'Frequent Contact' },
@@ -88,6 +91,10 @@ export const GLOBAL_NETWORK: { nodes: NetworkNode[], links: NetworkLink[] } = {
     { source: 'Vikram', target: 'Anjali', label: 'Shared Contact' },
     { source: 'Vikram', target: 'GangA', label: 'Member' },
     { source: 'Anjali', target: 'GangB', label: 'Affiliate' },
+    { source: 'Case1', target: 'EVD1', label: 'Evidence' },
+    { source: 'Case1', target: 'EVD2', label: 'Evidence' },
+    { source: 'Case1', target: 'EVD3', label: 'Evidence' },
+    { source: 'Vikram', target: 'EVD1', label: 'Linked By' },
   ]
 };
 

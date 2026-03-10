@@ -41,6 +41,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, Legend
 } from 'recharts';
+import { GoogleGenAI, Type } from "@google/genai";
 
 // --- Sub-components ---
 
@@ -86,6 +87,161 @@ const LanguageSelector = ({ current, onSelect }: { current: Language, onSelect: 
           {l.label}
         </button>
       ))}
+    </div>
+  );
+};
+
+const AddEvidenceModal = ({ onSave, onCancel }: { onSave: (e: any) => void, onCancel: () => void }) => {
+  const [name, setName] = useState('');
+  const [type, setType] = useState<'Document' | 'Image' | 'Audio' | 'Physical' | 'Digital'>('Document');
+  const [importance, setImportance] = useState<'High' | 'Medium' | 'Low'>('Medium');
+  const [locationFound, setLocationFound] = useState('');
+  const [collectedBy, setCollectedBy] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [fileContent, setFileContent] = useState('');
+
+  const analyzeContent = async () => {
+    if (!fileContent && !name) return;
+    setIsAnalyzing(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Analyze this evidence metadata and suggest 5 relevant tags for a criminal investigation.
+        Name: ${name}
+        Type: ${type}
+        Location: ${locationFound}
+        Content Snippet: ${fileContent || 'No content provided'}
+        Return only a JSON array of strings.`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+          }
+        }
+      });
+      
+      const suggested = JSON.parse(response.text);
+      setSuggestedTags(suggested);
+    } catch (error) {
+      console.error("AI Tagging failed:", error);
+      // Fallback tags if AI fails
+      setSuggestedTags(['Investigation', 'Evidence', 'Case-Linked', 'Forensic', 'Priority']);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const toggleTag = (tag: string) => {
+    setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
+  const handleSave = () => {
+    onSave({
+      id: `EVD-${Date.now()}`,
+      name,
+      type,
+      date: new Date().toISOString().split('T')[0],
+      aiSummary: `AI analyzed ${type} evidence found at ${locationFound}.`,
+      analysis: `Detailed forensic analysis of ${name} is pending. Initial assessment suggests ${importance} importance.`,
+      importance,
+      collectedBy,
+      locationFound,
+      tags,
+      fileSize: '1.2 MB'
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-[#141414] border border-white/10 w-full max-w-2xl rounded-3xl p-8">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <FileText className="w-6 h-6 text-emerald-500" />
+            Add New Evidence
+          </h2>
+          <button onClick={onCancel} className="p-2 hover:bg-white/5 rounded-full"><X className="w-6 h-6" /></button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6 mb-6">
+          <div className="col-span-2">
+            <label className="block text-[10px] text-white/40 uppercase mb-2">Evidence Name</label>
+            <input 
+              type="text" value={name} onChange={e => setName(e.target.value)} 
+              className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 outline-none focus:border-emerald-500/50" 
+              placeholder="e.g., Recovered Hard Drive"
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-white/40 uppercase mb-2">Type</label>
+            <select value={type} onChange={e => setType(e.target.value as any)} className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 outline-none focus:border-emerald-500/50">
+              <option value="Document">Document</option>
+              <option value="Image">Image</option>
+              <option value="Audio">Audio</option>
+              <option value="Physical">Physical</option>
+              <option value="Digital">Digital</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] text-white/40 uppercase mb-2">Importance</label>
+            <select value={importance} onChange={e => setImportance(e.target.value as any)} className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 outline-none focus:border-emerald-500/50">
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[10px] text-white/40 uppercase mb-2">Location Found</label>
+            <input type="text" value={locationFound} onChange={e => setLocationFound(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 outline-none focus:border-emerald-500/50" />
+          </div>
+          <div>
+            <label className="block text-[10px] text-white/40 uppercase mb-2">Collected By</label>
+            <input type="text" value={collectedBy} onChange={e => setCollectedBy(e.target.value)} className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 outline-none focus:border-emerald-500/50" />
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-[10px] text-white/40 uppercase mb-2">Content Snippet (for AI Analysis)</label>
+          <textarea 
+            value={fileContent} onChange={e => setFileContent(e.target.value)}
+            className="w-full bg-black/40 border border-white/10 rounded-xl py-3 px-4 h-24 outline-none focus:border-emerald-500/50 resize-none text-sm"
+            placeholder="Paste text from document or describe image content..."
+          />
+          <button 
+            onClick={analyzeContent}
+            disabled={isAnalyzing || (!fileContent && !name)}
+            className="mt-2 flex items-center gap-2 text-[10px] font-bold text-emerald-500 hover:text-emerald-400 disabled:opacity-50"
+          >
+            <Cpu className={`w-3 h-3 ${isAnalyzing ? 'animate-spin' : ''}`} />
+            {isAnalyzing ? 'Analyzing with AI...' : 'Suggest Tags with AI'}
+          </button>
+        </div>
+
+        {suggestedTags.length > 0 && (
+          <div className="mb-6 p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl">
+            <h4 className="text-[10px] font-bold text-emerald-500 uppercase mb-3">AI Suggested Tags (Select to add)</h4>
+            <div className="flex flex-wrap gap-2">
+              {suggestedTags.map(tag => (
+                <button 
+                  key={tag} 
+                  onClick={() => toggleTag(tag)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all border ${tags.includes(tag) ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white/5 border-white/10 text-white/40 hover:text-white/60'}`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-4">
+          <button onClick={onCancel} className="px-6 py-2 bg-white/5 hover:bg-white/10 rounded-full font-bold transition-all">Cancel</button>
+          <button onClick={handleSave} className="px-8 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full font-bold transition-all">Save Evidence</button>
+        </div>
+      </motion.div>
     </div>
   );
 };
@@ -886,7 +1042,19 @@ export default function App() {
     const [activeModule, setActiveModule] = useState<string>('profile');
     const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
     const [translatedMessageId, setTranslatedMessageId] = useState<string | null>(null);
+    const [isAddEvidenceModalOpen, setIsAddEvidenceModalOpen] = useState(false);
     if (!selectedCase) return null;
+
+    const handleSaveEvidence = (newEvidence: any) => {
+      setCases(prev => prev.map(c => {
+        if (c.id === selectedCase.id) {
+          return { ...c, evidence: [...c.evidence, newEvidence] };
+        }
+        return c;
+      }));
+      setSelectedCase(prev => prev ? { ...prev, evidence: [...prev.evidence, newEvidence] } : null);
+      setIsAddEvidenceModalOpen(false);
+    };
 
     const handleSaveVoiceNote = (note: VoiceNote) => {
       setVoiceNotes(prev => [...prev, note]);
@@ -1363,11 +1531,24 @@ export default function App() {
                           Evidence Repository
                         </h3>
                         <div className="flex gap-2">
+                          <button 
+                            onClick={() => setIsAddEvidenceModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-[10px] font-bold uppercase transition-all"
+                          >
+                            <Tag className="w-3 h-3" /> Add Evidence
+                          </button>
                           <span className="px-3 py-1 bg-emerald-500/10 text-emerald-500 rounded-full text-[10px] font-bold uppercase">
                             Total: {selectedCase.evidence.length} Items
                           </span>
                         </div>
                       </div>
+
+                      {isAddEvidenceModalOpen && (
+                        <AddEvidenceModal 
+                          onSave={handleSaveEvidence} 
+                          onCancel={() => setIsAddEvidenceModalOpen(false)} 
+                        />
+                      )}
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {selectedCase.evidence.map((item) => (

@@ -53,6 +53,7 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ nodes, links }) => {
           case 'Associate': return '#f59e0b';
           case 'Location': return '#10b981';
           case 'Case': return '#3b82f6';
+          case 'Evidence': return '#a855f7';
           default: return '#94a3b8';
         }
       });
@@ -116,6 +117,10 @@ export const NetworkGraph: React.FC<NetworkGraphProps> = ({ nodes, links }) => {
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-blue-500" />
           <span className="text-[10px] uppercase font-mono text-white/60">Case</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-full bg-purple-500" />
+          <span className="text-[10px] uppercase font-mono text-white/60">Evidence</span>
         </div>
       </div>
     </div>
